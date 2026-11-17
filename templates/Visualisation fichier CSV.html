@@ -1,0 +1,939 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>German Election Results 2021</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 2rem;
+        }
+
+        fieldset {
+            align-items: end;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        label {
+            display: grid;
+            gap: 0.35rem;
+        }
+
+        .table-container {
+            overflow-x: auto;
+        }
+
+        #germany-map {
+            background: #f2f4f6;
+            height: 600px;
+            width: 100%;
+        }
+
+        #map-layout {
+            position: relative;
+        }
+
+        #map-legend {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            position: absolute;
+            right: 12px;
+            top: 12px;
+            width: 260px;
+            z-index: 1000;
+            background: rgba(255, 255, 255, 0.94);
+            border: 1px solid #cbd1d8;
+            border-radius: 6px;
+            box-shadow: 0 1px 5px rgba(0, 0, 0, 0.2);
+            box-sizing: border-box;
+            padding: 0.75rem;
+        }
+
+        .legend-gradient {
+            background: linear-gradient(to right, #deebf7, #08306b);
+            height: 1rem;
+            width: 100%;
+        }
+
+        #map-legend p {
+            margin: 0 0 0.35rem;
+        }
+
+        #comparison-panel {
+            margin: 1.5rem 0;
+        }
+
+        #comparison-panel summary {
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .legend-social-item {
+            align-items: center;
+            display: flex;
+            gap: 0.5rem;
+            margin: 0.35rem 0;
+        }
+
+        .social-marker-icon,
+        .legend-symbol {
+            align-items: center;
+            background: rgba(255, 255, 255, 0.95);
+            border: 1px solid #333;
+            border-radius: 999px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+            color: #111;
+            display: flex;
+            font-size: 16px;
+            font-weight: bold;
+            height: 26px;
+            justify-content: center;
+            width: 40px;
+        }
+
+        @media (max-width: 760px) {
+            #map-legend {
+                position: static;
+                width: auto;
+            }
+        }
+
+        table {
+            border-collapse: collapse;
+            min-width: 100%;
+            white-space: nowrap;
+        }
+
+        caption {
+            font-weight: bold;
+            margin-bottom: 0.75rem;
+            text-align: left;
+        }
+
+        th,
+        td {
+            border: 1px solid #ccc;
+            padding: 0.5rem 0.75rem;
+            text-align: left;
+        }
+
+        thead {
+            background: #f0f0f0;
+        }
+
+        tbody tr:nth-child(even) {
+            background: #f8f8f8;
+        }
+    </style>
+</head>
+<body data-csv-url="{{ csv_url }}" data-kml-url="{{ kml_url }}">
+    <main>
+        <h1>German Election Results 2021</h1>
+        <nav id="glossary" aria-label="Glossary">
+            <ul>
+                <li><a href="#choropleth-map">Election and Social Indicators Map</a></li>
+                <li><a href="#filter-panel">Data Sorting and Filters</a></li>
+                <li><a href="#comparison-panel">Indicator Comparison</a></li>
+            </ul>
+        </nav>
+        <section id="choropleth-map" aria-labelledby="map-title">
+            <h2 id="map-title">Election and Social Indicators Map</h2>
+            <p>The fill color gets darker as the party's vote share increases. The symbol shows the relative level of the social indicator. Click a region to zoom in.</p>
+            <form id="map-form">
+                <fieldset disabled>
+                    <legend>Map Criteria</legend>
+                    <label for="party-select">
+                        Political Party
+                        <select id="party-select" name="party"></select>
+                    </label>
+                    <label for="social-select">
+                        Social Indicator
+                        <select id="social-select" name="social"></select>
+                    </label>
+                    <button type="submit">Update Map</button>
+                </fieldset>
+            </form>
+            <p id="map-status" role="status">Loading map and data…</p>
+            <div id="map-layout">
+                <div id="germany-map" aria-label="Interactive map of German regions"></div>
+                <div id="map-legend" aria-label="Map legend"></div>
+            </div>
+            <button type="button" id="overview-button" disabled>Show All of Germany</button>
+        </section>
+        <section id="catalogue" aria-labelledby="catalogue-title">
+            <h2 id="catalogue-title">Data Catalog</h2>
+            <p>Filter regions by name or by the value of a numeric indicator.</p>
+            <details id="filter-panel">
+                <summary>Filter and Sort Data</summary>
+                <form id="filter-form" novalidate>
+                    <fieldset disabled>
+                        <legend>Filter Options</legend>
+                        <label for="region-filter">
+                            Region
+                            <input type="search" id="region-filter" name="region" placeholder="e.g. Berlin">
+                        </label>
+                        <label for="metric-filter">
+                            Indicator to Filter
+                            <select id="metric-filter" name="metric">
+                                <option value="">All Indicators</option>
+                            </select>
+                        </label>
+                        <label for="minimum-value">
+                            Minimum Value
+                            <input type="number" id="minimum-value" name="minimum" min="0" step="1" max="100">
+                        </label>
+                        <label for="maximum-value">
+                            Maximum Value
+                            <input type="number" id="maximum-value" name="maximum" min="0" step="1" max="100">
+                        </label>
+                        <label for="sort-metric">
+                            Sort By
+                            <select id="sort-metric" name="sortMetric">
+                                <option value="">No Sorting</option>
+                            </select>
+                        </label>
+                        <label for="sort-direction">
+                            Sort Order
+                            <select id="sort-direction" name="sortDirection">
+                                <option value="desc">Largest to Smallest</option>
+                                <option value="asc">Smallest to Largest</option>
+                            </select>
+                        </label>
+                        <button type="submit">Apply</button>
+                        <button type="reset">Reset</button>
+                    </fieldset>
+                </form>
+            </details>
+            <p id="csv-status" role="status">Loading CSV file…</p>
+            <details id="comparison-panel">
+                <summary>Compare Two Indicators</summary>
+                <p>Choose two numeric columns to compare all regions. The table will be sorted by the first column. Pearson's correlation coefficient (r) indicates a linear relationship: close to 1 is positive, close to -1 is negative, and close to 0 is weak. Correlation does not prove causation.</p>
+                <form id="comparison-form">
+                    <fieldset disabled>
+                        <legend>Comparison Options</legend>
+                        <label for="comparison-sort">
+                            Sort By
+                            <select id="comparison-sort" name="comparisonSort">
+                                <option value="">Choose an Indicator</option>
+                            </select>
+                        </label>
+                        <label for="comparison-column">
+                            Second Indicator
+                            <select id="comparison-column" name="comparisonColumn">
+                                <option value="">Choose an Indicator</option>
+                            </select>
+                        </label>
+                        <label for="comparison-direction">
+                            Sort Order
+                            <select id="comparison-direction" name="comparisonDirection">
+                                <option value="desc">Largest to Smallest</option>
+                                <option value="asc">Smallest to Largest</option>
+                            </select>
+                        </label>
+                        <button type="submit">Compare</button>
+                    </fieldset>
+                </form>
+                <p id="comparison-status" role="status"></p>
+                <div id="comparison-container" class="table-container" hidden>
+                    <table>
+                        <caption>Comparison by Region</caption>
+                        <thead id="comparison-head"></thead>
+                        <tbody id="comparison-body"></tbody>
+                    </table>
+                </div>
+            </details>
+            <div class="table-container">
+                <table>
+                    <caption>Data by Region</caption>
+                    <thead id="csv-head"></thead>
+                    <tbody id="csv-body"></tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/togeojson@0.16.0/togeojson.js"></script>
+    <script src="https://unpkg.com/leaflet-omnivore@0.3.4/leaflet-omnivore.min.js"></script>
+    <script>
+        function parseCSV(text) {
+            const rows = [];
+            let row = [];
+            let field = "";
+            let insideQuotes = false;
+
+            text = text.replace(/^\uFEFF/, "");
+
+            for (let i = 0; i < text.length; i++) {
+                const character = text[i];
+
+                if (insideQuotes) {
+                    if (character === '"' && text[i + 1] === '"') {
+                        field += '"';
+                        i++;
+                    } else if (character === '"') {
+                        insideQuotes = false;
+                    } else {
+                        field += character;
+                    }
+                } else if (character === '"') {
+                    insideQuotes = true;
+                } else if (character === ",") {
+                    row.push(field.trim());
+                    field = "";
+                } else if (character === "\n") {
+                    row.push(field.trim());
+                    rows.push(row);
+                    row = [];
+                    field = "";
+                } else if (character !== "\r") {
+                    field += character;
+                }
+            }
+
+            if (insideQuotes) {
+                throw new Error("The CSV contains a quoted field that is not closed.");
+            }
+
+            if (field.length > 0 || row.length > 0) {
+                row.push(field.trim());
+                rows.push(row);
+            }
+
+            return rows.filter(csvRow => csvRow.some(value => value !== ""));
+        }
+
+        function getDataUrl(attribute, fallback) {
+            const url = document.body.dataset[attribute];
+            return url && !url.includes("{") ? url : fallback;
+        }
+
+        const status = document.getElementById("csv-status");
+        const filterForm = document.getElementById("filter-form");
+        const comparisonForm = document.getElementById("comparison-form");
+        const comparisonSort = document.getElementById("comparison-sort");
+        const comparisonColumn = document.getElementById("comparison-column");
+        const comparisonDirection = document.getElementById("comparison-direction");
+        const comparisonStatus = document.getElementById("comparison-status");
+        const metricFilter = document.getElementById("metric-filter");
+        const sortMetric = document.getElementById("sort-metric");
+        const sortDirection = document.getElementById("sort-direction");
+        const regionFilter = document.getElementById("region-filter");
+        const minimumValue = document.getElementById("minimum-value");
+        const maximumValue = document.getElementById("maximum-value");
+        const mapStatus = document.getElementById("map-status");
+        const mapForm = document.getElementById("map-form");
+        const overviewButton = document.getElementById("overview-button");
+        const mapLegend = document.getElementById("map-legend");
+        const partySelect = document.getElementById("party-select");
+        const socialSelect = document.getElementById("social-select");
+        const partyColumns = ["CDU/CSU%", "SPD%", "Greens%", "FDP%", "AfD%", "Left%", "Others%"];
+        const regionAliases = new Map([
+            ["hessen", "hesse"],
+            ["rheinlandpfalz", "rhinelandpalatinate"],
+            ["nordrheinwestfalen", "northrhinewestphalia"],
+            ["niedersachsen", "lowersaxony"],
+            ["sachsenanhalt", "saxonyanhalt"],
+            ["sachsen", "saxony"],
+            ["thuringen", "thuringia"],
+            ["bayern", "bavaria"]
+        ]);
+        let headers = [];
+        let dataRows = [];
+        let regionRows = new Map();
+        let map;
+        let kmlLayer;
+        let socialMarkerLayer;
+        let kmlRegions = [];
+        let germanyBounds;
+        let overviewZoom;
+        let regionZoom;
+        let csvLoaded = false;
+        let kmlLoaded = false;
+        let filterUsesMoneyScale = false;
+
+        function configureFilterRange() {
+            const usesMoneyScale = ["GDP per capita (€)", "Median Income (€)"]
+                .includes(metricFilter.value);
+
+            minimumValue.step = usesMoneyScale ? "100" : "1";
+            maximumValue.step = usesMoneyScale ? "100" : "1";
+
+            if (usesMoneyScale) {
+                minimumValue.removeAttribute("max");
+                maximumValue.removeAttribute("max");
+            } else {
+                minimumValue.max = "100";
+                maximumValue.max = "100";
+            }
+
+            if (usesMoneyScale !== filterUsesMoneyScale) {
+                minimumValue.value = "";
+                maximumValue.value = "";
+                filterUsesMoneyScale = usesMoneyScale;
+            }
+        }
+
+        function renderRows(rows) {
+            const tableBody = document.getElementById("csv-body");
+            tableBody.replaceChildren();
+
+            rows.forEach(csvRow => {
+                const tableRow = document.createElement("tr");
+                csvRow.forEach(value => {
+                    const cell = document.createElement("td");
+                    cell.textContent = value;
+                    tableRow.appendChild(cell);
+                });
+                tableBody.appendChild(tableRow);
+            });
+        }
+
+        function compareColumns() {
+            const comparisonContainer = document.getElementById("comparison-container");
+            const firstColumnIndex = headers.indexOf(comparisonSort.value);
+            const secondColumnIndex = headers.indexOf(comparisonColumn.value);
+            if (firstColumnIndex === -1 || secondColumnIndex === -1) {
+                comparisonContainer.hidden = true;
+                comparisonStatus.textContent = "Select both indicators to compare.";
+                return;
+            }
+
+            if (firstColumnIndex === secondColumnIndex) {
+                comparisonContainer.hidden = true;
+                comparisonStatus.textContent = "Choose two different indicators.";
+                return;
+            }
+
+            const stateIndex = headers.indexOf("State");
+            const direction = comparisonDirection.value === "asc" ? 1 : -1;
+            const sortedRows = [...dataRows].sort((first, second) =>
+                (Number(first[firstColumnIndex]) - Number(second[firstColumnIndex])) * direction
+            );
+            const head = document.getElementById("comparison-head");
+            const body = document.getElementById("comparison-body");
+            const headerRow = document.createElement("tr");
+            [headers[stateIndex], headers[firstColumnIndex], headers[secondColumnIndex]].forEach(label => {
+                const cell = document.createElement("th");
+                cell.scope = "col";
+                cell.textContent = label;
+                headerRow.appendChild(cell);
+            });
+            head.replaceChildren(headerRow);
+
+            body.replaceChildren();
+            sortedRows.forEach(row => {
+                const tableRow = document.createElement("tr");
+                [row[stateIndex], row[firstColumnIndex], row[secondColumnIndex]].forEach(value => {
+                    const cell = document.createElement("td");
+                    cell.textContent = value;
+                    tableRow.appendChild(cell);
+                });
+                body.appendChild(tableRow);
+            });
+
+            const correlation = calculateCorrelation(sortedRows, firstColumnIndex, secondColumnIndex);
+            const orderLabel = direction === 1 ? "ascending" : "descending";
+            const correlationLabel = correlation === null
+                ? "correlation cannot be calculated (one column is constant)"
+                : `Pearson correlation r = ${correlation.toFixed(2)}`;
+            comparisonStatus.textContent = `${sortedRows.length} regions compared, sorted by ${comparisonSort.value} (${orderLabel}). ${correlationLabel}.`;
+            comparisonContainer.hidden = false;
+        }
+
+        function calculateCorrelation(rows, firstColumnIndex, secondColumnIndex) {
+            if (rows.length < 2) {
+                return null;
+            }
+
+            const firstValues = rows.map(row => Number(row[firstColumnIndex]));
+            const secondValues = rows.map(row => Number(row[secondColumnIndex]));
+            const firstMean = firstValues.reduce((sum, value) => sum + value, 0) / rows.length;
+            const secondMean = secondValues.reduce((sum, value) => sum + value, 0) / rows.length;
+            let covariance = 0;
+            let firstVariance = 0;
+            let secondVariance = 0;
+
+            rows.forEach((row, index) => {
+                const firstDifference = firstValues[index] - firstMean;
+                const secondDifference = secondValues[index] - secondMean;
+                covariance += firstDifference * secondDifference;
+                firstVariance += firstDifference * firstDifference;
+                secondVariance += secondDifference * secondDifference;
+            });
+
+            const denominator = Math.sqrt(firstVariance * secondVariance);
+            return denominator === 0 ? null : covariance / denominator;
+        }
+
+        function normalizeRegion(regionName) {
+            const key = regionName.normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "")
+                .toLocaleLowerCase()
+                .replace(/[^a-z0-9]/g, "");
+            return regionAliases.get(key) || key;
+        }
+
+        function getKmlRegion(feature) {
+            const properties = feature.properties || {};
+            return properties.shape1 || properties.name || "";
+        }
+
+        function renderSocialMarkers() {
+            if (!socialMarkerLayer || !csvLoaded || !kmlRegions.length) {
+                return;
+            }
+
+            const socialIndex = headers.indexOf(socialSelect.value);
+            const values = Array.from(regionRows.values(), row => Number(row[socialIndex]));
+            const sortedValues = [...values].sort((first, second) => first - second);
+            const lowThreshold = getQuantile(sortedValues, 1 / 3);
+            const highThreshold = getQuantile(sortedValues, 2 / 3);
+
+            socialMarkerLayer.clearLayers();
+            kmlRegions.forEach(({ feature, center }) => {
+                const row = regionRows.get(normalizeRegion(getKmlRegion(feature)));
+                if (!row) {
+                    return;
+                }
+
+                const value = Number(row[socialIndex]);
+                const symbol = value <= lowThreshold ? "+" : value <= highThreshold ? "++" : "+++";
+                const icon = L.divIcon({
+                    className: "social-marker-icon",
+                    html: symbol,
+                    iconSize: [40, 26],
+                    iconAnchor: [20, 13]
+                });
+                L.marker(center, {
+                    icon,
+                    interactive: false,
+                    keyboard: false
+                }).addTo(socialMarkerLayer);
+            });
+        }
+
+        function interpolatePartyColor(value, minimum, maximum) {
+            const start = [222, 235, 247];
+            const end = [8, 48, 107];
+            const ratio = maximum === minimum ? 1 : (value - minimum) / (maximum - minimum);
+            const channels = start.map((channel, index) =>
+                Math.round(channel + (end[index] - channel) * ratio)
+            );
+            return `rgb(${channels.join(", ")})`;
+        }
+
+        function getQuantile(sortedValues, fraction) {
+            const index = Math.max(0, Math.ceil(sortedValues.length * fraction) - 1);
+            return sortedValues[index];
+        }
+
+        function formatNumber(value) {
+            return new Intl.NumberFormat("en-GB", { maximumFractionDigits: 2 }).format(value);
+        }
+
+        function createMapTooltip(regionName, row, partyIndex, socialIndex) {
+            const content = document.createElement("div");
+            const title = document.createElement("strong");
+            title.textContent = regionName || "Unknown region";
+            content.appendChild(title);
+
+            if (row) {
+                [[partySelect.value, partyIndex], [socialSelect.value, socialIndex]].forEach(([label, index]) => {
+                    const line = document.createElement("div");
+                    line.textContent = `${label} : ${row[index]}`;
+                    content.appendChild(line);
+                });
+            } else {
+                const line = document.createElement("div");
+                line.textContent = "No matching row found in the CSV.";
+                content.appendChild(line);
+            }
+
+            return content;
+        }
+
+        function renderMapLegend(partyName, socialName, minimumParty, maximumParty, lowThreshold, highThreshold) {
+            const legend = document.getElementById("map-legend");
+            legend.replaceChildren();
+
+            const partyLegend = document.createElement("div");
+            const partyTitle = document.createElement("p");
+            partyTitle.textContent = `${partyName}: fill color (lower to higher vote share)`;
+            const gradient = document.createElement("div");
+            gradient.className = "legend-gradient";
+            gradient.setAttribute("aria-label", `From ${formatNumber(minimumParty)} to ${formatNumber(maximumParty)}`);
+            const partyRange = document.createElement("div");
+            partyRange.textContent = `${formatNumber(minimumParty)} — ${formatNumber(maximumParty)}`;
+            partyLegend.append(partyTitle, gradient, partyRange);
+
+            const socialLegend = document.createElement("div");
+            const socialTitle = document.createElement("p");
+            socialTitle.textContent = `${socialName}: symbol on the region`;
+            socialLegend.appendChild(socialTitle);
+
+            const socialRanges = [
+                `≤ ${formatNumber(lowThreshold)}`,
+                `${formatNumber(lowThreshold)} – ${formatNumber(highThreshold)}`,
+                `> ${formatNumber(highThreshold)}`
+            ];
+            const socialSymbols = ["+", "++", "+++"];
+            ["Lower", "Intermediate", "Higher"].forEach((label, index) => {
+                const item = document.createElement("div");
+                item.className = "legend-social-item";
+                const symbol = document.createElement("span");
+                symbol.className = "legend-symbol";
+                symbol.textContent = socialSymbols[index];
+                const text = document.createElement("span");
+                text.textContent = `${label} (${socialRanges[index]})`;
+                item.append(symbol, text);
+                socialLegend.appendChild(item);
+            });
+
+            legend.append(partyLegend, socialLegend);
+        }
+
+        function applyMapStyle() {
+            if (!csvLoaded || !kmlLoaded) {
+                return;
+            }
+
+            const partyIndex = headers.indexOf(partySelect.value);
+            const socialIndex = headers.indexOf(socialSelect.value);
+            if (partyIndex === -1 || socialIndex === -1) {
+                mapStatus.textContent = "Choose a valid party and social indicator.";
+                return;
+            }
+
+            const partyValues = Array.from(regionRows.values(), row => Number(row[partyIndex]));
+            const socialValues = Array.from(regionRows.values(), row => Number(row[socialIndex]));
+            const minimumParty = Math.min(...partyValues);
+            const maximumParty = Math.max(...partyValues);
+            const sortedSocialValues = [...socialValues].sort((first, second) => first - second);
+            const lowThreshold = getQuantile(sortedSocialValues, 1 / 3);
+            const highThreshold = getQuantile(sortedSocialValues, 2 / 3);
+
+            kmlLayer.setStyle(feature => {
+                const regionName = getKmlRegion(feature);
+                const row = regionRows.get(normalizeRegion(regionName));
+                if (!row) {
+                    return { color: "#666", fillColor: "#ddd", fillOpacity: 0.75, weight: 2 };
+                }
+
+                const partyValue = Number(row[partyIndex]);
+                return {
+                    color: "#fff",
+                    fillColor: interpolatePartyColor(partyValue, minimumParty, maximumParty),
+                    fillOpacity: 0.88,
+                    lineCap: "butt",
+                    lineJoin: "round",
+                    weight: 1.5
+                };
+            });
+            renderSocialMarkers();
+
+            const unmatchedRegions = [];
+            kmlLayer.eachLayer(layer => {
+                const regionName = getKmlRegion(layer.feature);
+                const row = regionRows.get(normalizeRegion(regionName));
+                if (!row) {
+                    unmatchedRegions.push(regionName || "Unknown region");
+                }
+
+                const tooltip = createMapTooltip(
+                    regionName,
+                    row,
+                    partyIndex,
+                    socialIndex
+                );
+                if (layer.getTooltip()) {
+                    layer.setTooltipContent(tooltip);
+                } else {
+                    layer.bindTooltip(tooltip);
+                }
+            });
+
+            renderMapLegend(
+                partySelect.value,
+                socialSelect.value,
+                minimumParty,
+                maximumParty,
+                lowThreshold,
+                highThreshold
+            );
+
+            const matchedCount = kmlLayer.getLayers().length - unmatchedRegions.length;
+            mapStatus.textContent = unmatchedRegions.length
+                ? `No CSV match for: ${unmatchedRegions.join(", ")}.`
+                : "";
+        }
+
+        function updateMapReadiness() {
+            if (csvLoaded && kmlLoaded) {
+                mapForm.querySelector("fieldset").disabled = false;
+                applyMapStyle();
+                fitGermanyView();
+                overviewZoom = map.getZoom();
+                regionZoom = overviewZoom + 2;
+            }
+        }
+
+        function fitGermanyView() {
+            const legendOverlay = window.getComputedStyle(mapLegend).position === "absolute";
+            const rightPadding = legendOverlay ? mapLegend.offsetWidth + 24 : 12;
+            map.fitBounds(germanyBounds, {
+                paddingTopLeft: [12, 12],
+                paddingBottomRight: [rightPadding, 12]
+            });
+        }
+
+        function zoomToRegion(center) {
+            const legendOverlay = window.getComputedStyle(mapLegend).position === "absolute";
+            if (legendOverlay) {
+                const rightPadding = mapLegend.offsetWidth + 24;
+                const centerOffset = (rightPadding - 12) / 2;
+                const adjustedCenter = map.unproject(
+                    map.project(center, regionZoom).add([centerOffset, 0]),
+                    regionZoom
+                );
+                map.setView(adjustedCenter, regionZoom);
+            } else {
+                map.setView(center, regionZoom);
+            }
+        }
+
+        function loadKML() {
+            if (!window.L || !window.omnivore) {
+                mapStatus.textContent = "Could not initialize the map. Check your internet connection to load Leaflet.";
+                return;
+            }
+
+            try {
+                map = L.map("germany-map", {
+                    dragging: false,
+                    keyboard: false,
+                    zoomControl: false,
+                    scrollWheelZoom: false,
+                    doubleClickZoom: false,
+                    touchZoom: false,
+                    boxZoom: false
+                }).setView([51, 10], 6);
+
+                kmlLayer = omnivore.kml(getDataUrl("kmlUrl", "states_level_1.kml"))
+                    .on("ready", () => {
+                        kmlLayer.eachLayer(layer => {
+                            kmlRegions.push({
+                                feature: layer.feature,
+                                center: layer.getBounds().getCenter()
+                            });
+                            layer.on("click", () => {
+                                overviewButton.disabled = false;
+                                zoomToRegion(layer.getBounds().getCenter());
+                            });
+                        });
+                        socialMarkerLayer = L.layerGroup().addTo(map);
+                        kmlLoaded = true;
+                        germanyBounds = kmlLayer.getBounds();
+                        updateMapReadiness();
+                    })
+                    .on("error", () => {
+                        mapStatus.textContent = "Could not load the KML. Make sure it is in the same folder and open the page using a local server.";
+                    })
+                    .addTo(map);
+            } catch (error) {
+                console.error("Could not initialize the KML map:", error);
+                mapStatus.textContent = "The map could not be initialized. Check the Leaflet libraries and the KML file.";
+            }
+        }
+
+        function filterRows() {
+            const region = regionFilter.value.trim().toLocaleLowerCase();
+            const metric = metricFilter.value;
+            const minimum = minimumValue.value === "" ? null : Number(minimumValue.value);
+            const maximum = maximumValue.value === "" ? null : Number(maximumValue.value);
+            const usesMoneyScale = ["GDP per capita (€)", "Median Income (€)"]
+                .includes(metric);
+
+            if ((minimum !== null || maximum !== null) && !metric) {
+                status.textContent = "Choose an indicator to filter by value.";
+                return;
+            }
+
+            if ((minimum !== null && minimum < 0) || (maximum !== null && maximum < 0)) {
+                status.textContent = "Filter values cannot be negative.";
+                return;
+            }
+
+            if (!usesMoneyScale &&
+                ((minimum !== null && minimum > 100) || (maximum !== null && maximum > 100))) {
+                status.textContent = "For this indicator, filter values must not exceed 100.";
+                return;
+            }
+
+            if (minimum !== null && maximum !== null && minimum > maximum) {
+                status.textContent = "The minimum value must be less than or equal to the maximum value.";
+                return;
+            }
+
+            const stateIndex = headers.indexOf("State");
+            const metricIndex = headers.indexOf(metric);
+            const filteredRows = dataRows.filter(csvRow => {
+                if (region && !csvRow[stateIndex].toLocaleLowerCase().includes(region)) {
+                    return false;
+                }
+
+                if (metric) {
+                    const value = Number(csvRow[metricIndex]);
+                    if ((minimum !== null && value < minimum) ||
+                        (maximum !== null && value > maximum)) {
+                        return false;
+                    }
+                }
+
+                return true;
+            });
+
+            const sortIndex = headers.indexOf(sortMetric.value);
+            if (sortIndex !== -1) {
+                const direction = sortDirection.value === "asc" ? 1 : -1;
+                filteredRows.sort((first, second) =>
+                    (Number(first[sortIndex]) - Number(second[sortIndex])) * direction
+                );
+            }
+
+            renderRows(filteredRows);
+            const sortMessage = sortIndex === -1
+                ? ""
+                : ` Sorted by ${sortMetric.value}, ${sortDirection.value === "asc" ? "smallest to largest" : "largest to smallest"}.`;
+            status.textContent = `${filteredRows.length} region(s) shown out of ${dataRows.length}.${sortMessage}`;
+        }
+
+        async function loadCSV() {
+            try {
+                const response = await fetch(getDataUrl("csvUrl", "Germany_Election_Master_Filled_2021.csv"));
+                if (!response.ok) {
+                    throw new Error(`HTTP error ${response.status}`);
+                }
+
+                const rows = parseCSV(await response.text());
+                if (rows.length < 2) {
+                    throw new Error("The file does not contain headers and data.");
+                }
+
+                headers = rows[0];
+                dataRows = rows.slice(1);
+                const stateIndex = headers.indexOf("State");
+                if (stateIndex === -1) {
+                    throw new Error("The CSV is missing the State column required by the map.");
+                }
+
+                const invalidRow = dataRows.findIndex(csvRow => csvRow.length !== headers.length);
+                if (invalidRow !== -1) {
+                    throw new Error(`Row ${invalidRow + 2} does not have the same number of columns as the header.`);
+                }
+
+                const headerRow = document.createElement("tr");
+                headers.forEach(header => {
+                    const cell = document.createElement("th");
+                    cell.scope = "col";
+                    cell.textContent = header;
+                    headerRow.appendChild(cell);
+                });
+                document.getElementById("csv-head").appendChild(headerRow);
+
+                const numericHeaders = [];
+                headers.forEach((header, index) => {
+                    const isNumeric = dataRows.every(csvRow =>
+                        csvRow[index] !== "" && Number.isFinite(Number(csvRow[index]))
+                    );
+                    if (index !== stateIndex && isNumeric && header !== "Year") {
+                        numericHeaders.push(header);
+                        [metricFilter, sortMetric, comparisonSort, comparisonColumn].forEach(select => {
+                            const option = document.createElement("option");
+                            option.value = header;
+                            option.textContent = header;
+                            select.appendChild(option);
+                        });
+                    }
+                });
+                configureFilterRange();
+
+                partyColumns.filter(header => headers.includes(header)).forEach(header => {
+                    const option = document.createElement("option");
+                    option.value = header;
+                    option.textContent = header;
+                    partySelect.appendChild(option);
+                });
+
+                const socialHeaders = numericHeaders.filter(header =>
+                    !partyColumns.includes(header) && header !== "Turnout%"
+                );
+                socialHeaders.forEach(header => {
+                    const option = document.createElement("option");
+                    option.value = header;
+                    option.textContent = header;
+                    socialSelect.appendChild(option);
+                });
+
+                if (!partySelect.options.length || !socialSelect.options.length) {
+                    throw new Error("The CSV must contain at least one party column and one numeric social indicator.");
+                }
+
+                regionRows = new Map(dataRows.map(row => [
+                    normalizeRegion(row[stateIndex]),
+                    row
+                ]));
+
+                renderRows(dataRows);
+                filterForm.querySelector("fieldset").disabled = false;
+                comparisonForm.querySelector("fieldset").disabled = false;
+                status.textContent = "";
+                csvLoaded = true;
+                updateMapReadiness();
+            } catch (error) {
+                console.error("Could not read the CSV file:", error);
+                status.textContent = "Could not load the CSV. Make sure the file is in the same folder and open this page using a local server (for example, Live Server in VS Code).";
+                mapStatus.textContent = "The map requires both the CSV and KML files to load.";
+            }
+        }
+
+        filterForm.addEventListener("submit", event => {
+            event.preventDefault();
+            filterRows();
+        });
+
+        filterForm.addEventListener("reset", () => {
+            setTimeout(() => {
+                configureFilterRange();
+                filterRows();
+            }, 0);
+        });
+
+        metricFilter.addEventListener("change", configureFilterRange);
+
+        comparisonForm.addEventListener("submit", event => {
+            event.preventDefault();
+            compareColumns();
+        });
+
+        mapForm.addEventListener("submit", event => {
+            event.preventDefault();
+            applyMapStyle();
+        });
+
+        overviewButton.addEventListener("click", () => {
+            if (germanyBounds) {
+                fitGermanyView();
+                overviewButton.disabled = true;
+            }
+        });
+
+        loadKML();
+        loadCSV();
+    </script>
+</body>
+</html>
