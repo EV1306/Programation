@@ -10,6 +10,14 @@ def index():
         kml_url=url_for("states_kml"),
     )
 
+@app.get("/styleproject.css")
+def styleproject_css():
+    return send_from_directory(
+        app.root_path,
+        "styleproject.css",
+        mimetype="text/css",
+    )
+
 @app.get("/data/election.csv")
 def election_csv():
     return send_from_directory(

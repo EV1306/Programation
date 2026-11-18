@@ -1,0 +1,352 @@
+body {
+    font-family: Arial, sans-serif;
+    margin: 2.5rem;
+}
+
+h1 {
+    font-size: 2.5rem;
+    color: #005289;
+    margin-bottom: 3rem;
+    margin-top: 3rem;
+    text-align: center;
+}
+
+h2 {
+    font-size: 1.5rem;
+    background-color: #005289;
+    border-radius: 0.75rem;
+    color: #fff;
+    margin-bottom: 2rem;
+    margin-top: 2rem;
+    padding: 0.5rem 1rem;
+}
+
+ul {
+    font-size: 1.25rem;
+    list-style-type: none;
+    padding: 1rem;
+    text-align: left;
+    font-size: 1rem;
+    color: #fff;
+}
+
+fieldset {
+    align-items: end;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2rem;
+    border: 1.25px solid #005289;
+    border-radius: 0.5rem;
+    text-align: left;
+}
+
+p {
+    font-size: 1.rem;
+    margin-bottom: 1rem;
+    margin-top: 1rem;
+    text-align: justify;
+}
+
+legend {
+    font-size: 1.2rem;
+    color: #005289;
+    font-weight: bold;
+    margin-bottom: 0.75rem;
+    margin-top: 1rem;
+}
+
+label {
+    color: #005289;
+    display: grid;
+    gap: 0.5rem;
+    padding: 0.75rem;
+    font-size: 1.1rem;
+
+}
+
+button {
+    background-color: #005289;
+    border: 1px solid black;
+    border-radius: 0.4rem;
+    color: #fff;
+    cursor: pointer;
+    font-size: 1rem;
+    margin-bottom: 0.67rem;
+    padding: 0.3rem 0.3rem;
+    
+}
+
+select {
+    border: 1px solid black;
+    border-radius: 0.4rem;
+    padding: 0.3rem 0.3rem;
+    font-size: 1rem;
+}
+
+
+.table-container {
+    overflow-x: auto;
+}
+
+#germany-map {
+    background: #f2f4f6;
+    height: 600px;
+    width: 100%;
+}
+
+#map-layout {
+    position: relative;
+}
+
+#map-legend {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    position: absolute;
+    right: 12px;
+    top: 12px;
+    width: 260px;
+    z-index: 1000;
+    background: rgba(255, 255, 255, 0.94);
+    border: 1px solid #cbd1d8;
+    border-radius: 6px;
+    box-shadow: 0 1px 5px rgba(0, 0, 0, 0.2);
+    box-sizing: border-box;
+    padding: 0.75rem;
+}
+
+.legend-gradient {
+    background: linear-gradient(to right, #deebf7, #08306b);
+    height: 1rem;
+    width: 100%;
+}
+
+#map-legend p {
+    margin: 0 0 0.35rem;
+}
+
+#filter-panel > summary {
+    cursor: pointer;
+}
+
+#comparison-panel {
+    margin: 1.5rem 0;
+}
+
+#comparison-panel summary {
+    cursor: pointer;
+    font-weight: bold;
+}
+
+#region-filter,
+#minimum-value,
+#maximum-value {
+    border: 1px solid black;
+    border-radius: 0.4rem;
+    padding: 0.3rem 0.3rem;    box-sizing: border-box;
+    font-size: 1rem;
+}
+
+.legend-social-item {
+    align-items: center;
+    display: flex;
+    gap: 0.5rem;
+    margin: 0.35rem 0;
+}
+
+.social-marker-icon,
+.legend-symbol {
+    align-items: center;
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid #333;
+    border-radius: 999px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+    color: #111;
+    display: flex;
+    font-size: 16px;
+    font-weight: bold;
+    height: 26px;
+    justify-content: center;
+    width: 40px;
+}
+
+summary {
+    font-size: 1.25rem;
+    color: #005289;
+    font-weight: bold;
+    margin-bottom: 1.25rem;
+    margin-top: 1.5rem;
+
+}
+
+@media (max-width: 760px) {
+    #map-legend {
+        position: static;
+        width: auto;
+    }
+}
+
+table {
+    border-collapse: collapse;
+    min-width: 100%;
+    white-space: nowrap;
+}
+
+caption {
+    font-weight: bold;
+    font-size: 1.25rem;
+    color: #005289;
+    margin-top: 2rem;
+    margin-bottom: 0.75rem;
+    text-align: left;
+}
+
+th,
+td {
+    border: 1px solid #005289;
+    padding: 0.5rem 0.75rem;
+    text-align: center;
+}
+
+thead {
+    background: #005289;
+    color: #fff;
+}
+
+tbody tr:nth-child(even) {
+    background: #9dcdf75f;
+}
+
+tbody tr:nth-child(odd) {
+    background: #c2ddff81;
+}
+
+#glossary ul {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;          /* space between links */
+    padding: 0;
+    font-size: 0.9rem;
+}
+
+#glossary a {
+    color: #005289;
+    text-decoration: underline;
+}
+
+#glossary a:hover {
+    text-decoration: underline;
+}
+
+
+#filter-form fieldset {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) max-content;
+    gap: 1rem;
+    align-items: end;
+    margin-bottom: 1rem;
+}
+
+#filter-form fieldset > legend {
+    grid-column: 1 / -1;
+}
+
+#filter-form fieldset > label:nth-of-type(1) {
+    grid-column: 1;
+    grid-row: 2;
+}
+
+#filter-form fieldset > label:nth-of-type(2) {
+    grid-column: 2;
+    grid-row: 2;
+}
+
+#filter-form fieldset > label:nth-of-type(3) {
+    grid-column: 1;
+    grid-row: 3;
+}
+
+#filter-form fieldset > label:nth-of-type(4) {
+    grid-column: 2;
+    grid-row: 3;
+}
+
+#filter-form fieldset > label:nth-of-type(5) {
+    grid-column: 1;
+    grid-row: 4;
+}
+
+#filter-form fieldset > label:nth-of-type(6) {
+    grid-column: 2;
+    grid-row: 4;
+}
+
+#filter-form fieldset > button[type="submit"] {
+    grid-column: 3;
+    grid-row: 4;
+}
+
+#filter-form fieldset > button[type="reset"] {
+    grid-column: 3;
+    grid-row: 1;
+}
+
+#map-form fieldset,
+#comparison-form fieldset {
+    display: grid;
+    gap: 1rem;
+    align-items: end;
+}
+
+#map-form fieldset {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) max-content;
+}
+
+#comparison-form fieldset {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) max-content;
+}
+
+#map-form fieldset > legend,
+#comparison-form fieldset > legend {
+    grid-column: 1 / -1;
+}
+
+#map-form fieldset > label:nth-of-type(1) {
+    grid-column: 1;
+    grid-row: 2;
+}
+
+#map-form fieldset > label:nth-of-type(2) {
+    grid-column: 2;
+    grid-row: 2;
+}
+
+#map-form fieldset > button {
+    grid-column: 3;
+    grid-row: 2;
+}
+
+#comparison-form fieldset {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+#comparison-form fieldset > label:nth-of-type(1) {
+    grid-column: 1;
+    grid-row: 2;
+}
+
+#comparison-form fieldset > label:nth-of-type(2) {
+    grid-column: 2;
+    grid-row: 2;
+}
+
+#comparison-form fieldset > label:nth-of-type(3) {
+    grid-column: 1;
+    grid-row: 3;
+}
+
+#comparison-form fieldset > button {
+    grid-column: 2;
+    grid-row: 3;
+}
